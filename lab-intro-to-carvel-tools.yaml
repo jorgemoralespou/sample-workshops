@@ -23,10 +23,10 @@ spec:
         enabled: true
         layout: split
       console:
-        enabled: true
+        enabled: false
       editor:
         enabled: true
       registry:
-        enabled: true
+        enabled: false
       docker:
-        enabled: true
+        enabled: false
