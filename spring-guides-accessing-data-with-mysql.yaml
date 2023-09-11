@@ -1,0 +1,149 @@
+apiVersion: training.educates.dev/v1beta1
+kind: Workshop
+metadata:
+  name: spring-guides-accessing-data-with-mysql
+spec:
+  title: Accessing data with MySQL
+  description: Accessing data with MySQL
+  workshop:
+    image: jdk17-environment:*
+    files:
+      - image:
+          url: ghcr.io/vmware-tanzu-learning/course-spring-guides-files:56dc1dc
+        includePaths:
+          - /workshops/03-accessing-data-with-mysql/workshop/**
+        newRootPath: workshops/03-accessing-data-with-mysql
+      - path: .local/share/code-server/extensions
+        image:
+          url: ghcr.io/vmware-tanzu-learning/vscode-java-extensions-$(platform_arch)-files:2.1.0
+      - path: exercises
+        git:
+          url: https://github.com/vmware-tanzu-learning/gs-accessing-data-mysql.git
+          ref: main
+        newRootPath: .
+  session:
+    namespaces:
+      budget: medium
+    resources:
+      memory: 2Gi
+    applications:
+      terminal:
+        enabled: true
+        layout: none
+      editor:
+        enabled: true
+    env:
+      - name: MYSQL_HOST
+        value: mysql.$(session_namespace).svc.cluster.local
+    dashboards:
+      - name: Spring Initializr
+        url: $(ingress_protocol)://initializr-$(session_namespace).$(ingress_domain)
+      - name: Terminal
+        url: terminal:main
+    ingresses:
+      - name: initializr
+        protocol: http
+        host: initializr.$(workshop_namespace).svc.cluster.local
+        port: 8080
+      - name: mysql
+        protocol: tcp
+        host: mysql.$(session_namespace).svc.cluster.local
+        port: 3306
+    objects:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: mysql
+          labels:
+            app: mysql
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: mysql
+          template:
+            metadata:
+              labels:
+                app: mysql
+            spec:
+              containers:
+                - name: mysql
+                  image: mysql
+                  imagePullPolicy: IfNotPresent
+                  env:
+                    - name: MYSQL_USER
+                      value: springuser
+                    - name: MYSQL_PASSWORD
+                      value: ThePassword
+                    - name: MYSQL_DATABASE
+                      value: db_example
+                    - name: MYSQL_ROOT_PASSWORD
+                      value: root
+                  ports:
+                    - name: 3306-tcp
+                      containerPort: 3306
+                      protocol: TCP
+                  securityContext:
+                    runAsUser: 65534
+                    runAsGroup: 65534
+                    runAsNonRoot: true
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                        - ALL
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: mysql
+          labels:
+            app: mysql
+        spec:
+          type: ClusterIP
+          selector:
+            app: mysql
+          ports:
+            - name: 3306-tcp
+              port: 3306
+              targetPort: 3306
+              protocol: TCP
+  environment:
+    objects:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: initializr
+          labels:
+            app: initializr
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: initializr
+          template:
+            metadata:
+              labels:
+                app: initializr
+            spec:
+              containers:
+                - name: dashboard
+                  image: ghcr.io/vmware-tanzu-labs/educates-spring-initializr:2.0
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                    - name: 8080-tcp
+                      containerPort: 8080
+                      protocol: TCP
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: initializr
+          labels:
+            app: initializr
+        spec:
+          type: ClusterIP
+          selector:
+            app: initializr
+          ports:
+            - name: 8080-tcp
+              port: 8080
+              targetPort: 8080
+              protocol: TCP

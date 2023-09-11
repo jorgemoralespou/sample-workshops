@@ -1,0 +1,97 @@
+apiVersion: training.educates.dev/v1beta1
+kind: Workshop
+metadata:
+  name: spring-guides-messaging-with-rabbitmq
+spec:
+  title: Messaging with RabbitMQ
+  description: Messaging with RabbitMQ
+  workshop:
+    image: jdk17-environment:*
+    files:
+      - image:
+          url: ghcr.io/vmware-tanzu-learning/course-spring-guides-files:56dc1dc
+        includePaths:
+          - /workshops/01-messaging-with-rabbitmq/workshop/**
+        newRootPath: workshops/01-messaging-with-rabbitmq
+      - path: .local/share/code-server/extensions
+        image:
+          url: ghcr.io/vmware-tanzu-learning/vscode-java-extensions-$(platform_arch)-files:2.1.0
+      - path: exercises
+        git:
+          url: https://github.com/vmware-tanzu-learning/gs-messaging-rabbitmq.git
+          ref: main
+        newRootPath: .
+  session:
+    namespaces:
+      budget: medium
+    resources:
+      memory: 2Gi
+    applications:
+      terminal:
+        enabled: true
+        layout: none
+      editor:
+        enabled: true
+      docker:
+        enabled: true
+        storage: 500Mi
+        socket:
+          enabled: true
+        compose:
+          services:
+            rabbit-workshop:
+              image: rabbitmq:management
+              ports:
+                - 5672:5672
+                - 15672:15672
+    dashboards:
+      - name: Spring Initializr
+        url: $(ingress_protocol)://initializr-$(session_namespace).$(ingress_domain)
+      - name: Terminal
+        url: terminal:main
+    ingresses:
+      - name: initializr
+        protocol: http
+        host: initializr.$(workshop_namespace).svc.cluster.local
+        port: 8080
+  environment:
+    objects:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: initializr
+          labels:
+            app: initializr
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: initializr
+          template:
+            metadata:
+              labels:
+                app: initializr
+            spec:
+              containers:
+                - name: dashboard
+                  image: ghcr.io/vmware-tanzu-labs/educates-spring-initializr:2.0
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                    - name: 8080-tcp
+                      containerPort: 8080
+                      protocol: TCP
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: initializr
+          labels:
+            app: initializr
+        spec:
+          type: ClusterIP
+          selector:
+            app: initializr
+          ports:
+            - name: 8080-tcp
+              port: 8080
+              targetPort: 8080
+              protocol: TCP
