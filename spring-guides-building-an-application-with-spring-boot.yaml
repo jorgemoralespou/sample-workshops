@@ -1,85 +1,55 @@
 apiVersion: training.educates.dev/v1beta1
 kind: Workshop
 metadata:
-  name: spring-guides-building-an-application-with-spring-boot
+  name: lab-springboot
 spec:
-  title: Building an Application with Spring Boot
-  description: Building an Application with Spring Boot
-  workshop:
-    image: jdk17-environment:*
-    files:
-      - image:
-          url: ghcr.io/vmware-tanzu-learning/course-spring-guides-files:56dc1dc
-        includePaths:
-          - /workshops/02-building-an-application-with-spring-boot/workshop/**
-        newRootPath: workshops/02-building-an-application-with-spring-boot
-      - path: .local/share/code-server/extensions
-        image:
-          url: ghcr.io/vmware-tanzu-learning/vscode-java-extensions-$(platform_arch)-files:2.1.0
-      - path: exercises
-        git:
-          url: https://github.com/vmware-tanzu-learning/gs-spring-boot.git
-          ref: main
-        newRootPath: .
+  description: Workshop description.
   session:
-    namespaces:
-      budget: medium
-    resources:
-      memory: 2Gi
     applications:
-      terminal:
+      docker:
+        compose:
+          services:
+            initializr:
+              image: ghcr.io/vmware-tanzu-labs/educates-spring-initializr:2.1
+              ports:
+              - mode: host
+                protocol: tcp
+                published: 8080
+                target: 8080
         enabled: true
-        layout: none
       editor:
         enabled: true
+      terminal:
+        enabled: true
+        layout: split
     dashboards:
-      - name: Spring Initializr
-        url: $(ingress_protocol)://initializr-$(session_namespace).$(ingress_domain)
-      - name: Terminal
-        url: terminal:main
+    - name: Spring Initializr
+      url: $(ingress_protocol)://initializr-$(session_hostname)$(ingress_port_suffix)
     ingresses:
-      - name: initializr
-        protocol: http
-        host: initializr.$(workshop_namespace).svc.cluster.local
-        port: 8080
-  environment:
-    objects:
-      - apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: initializr
-          labels:
-            app: initializr
-        spec:
-          replicas: 1
-          selector:
-            matchLabels:
-              app: initializr
-          template:
-            metadata:
-              labels:
-                app: initializr
-            spec:
-              containers:
-                - name: dashboard
-                  image: ghcr.io/vmware-tanzu-labs/educates-spring-initializr:2.0
-                  imagePullPolicy: IfNotPresent
-                  ports:
-                    - name: 8080-tcp
-                      containerPort: 8080
-                      protocol: TCP
-      - apiVersion: v1
-        kind: Service
-        metadata:
-          name: initializr
-          labels:
-            app: initializr
-        spec:
-          type: ClusterIP
-          selector:
-            app: initializr
-          ports:
-            - name: 8080-tcp
-              port: 8080
-              targetPort: 8080
-              protocol: TCP
+    - host: initializr
+      name: initializr
+      port: 8080
+      protocol: http
+    namespaces:
+      budget: medium
+    patches:
+      hostAliases:
+      - hostnames:
+        - initializr
+        ip: 127.0.0.1
+    resources:
+      memory: 2Gi
+  title: Workshop
+  version: main
+  workshop:
+    files:
+    - image:
+        url: ghcr.io/jorgemoralespou/lab-springboot-files:main
+      includePaths:
+      - /workshop/**
+      - /exercises/**
+      - /README.md
+    - image:
+        url: ghcr.io/vmware-tanzu-learning/vscode-java-extensions-$(platform_arch)-files:2.1.0
+      path: .local/share/code-server/extensions
+    image: jdk17-environment:*
